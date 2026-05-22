@@ -66,6 +66,7 @@ set(SANITIZER_LIBCDEP_SOURCES
   sanitizer_linux_libcdep.cpp
   sanitizer_mac_libcdep.cpp
   sanitizer_posix_libcdep.cpp
+  sanitizer_stoptheworld_freebsd_libcdep.cpp
   sanitizer_stoptheworld_linux_libcdep.cpp
   sanitizer_stoptheworld_netbsd_libcdep.cpp
   )

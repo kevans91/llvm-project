@@ -453,7 +453,7 @@ static void ProcessThread(ThreadID os_id, uptr sp,
   // memory.
   CHECK(extra_ranges.empty());
   LOG_THREADS("Processing thread %llu.\n", os_id);
-  uptr stack_begin, stack_end, tls_begin, tls_end, cache_begin, cache_end;
+  uptr stack_begin, stack_end, tls_begin, tls_end, cache_begin, cache_end, tsd_begin, tsd_end;
   DTLS *dtls;
   bool thread_found =
       GetThreadRangesLocked(os_id, &stack_begin, &stack_end, &tls_begin,

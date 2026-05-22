@@ -122,7 +122,12 @@ supported_netbsd = config.target_os == "NetBSD" and config.target_arch in [
     "x86_64",
     "i386",
 ]
-if not (supported_android or supported_linux or supported_darwin or supported_netbsd):
+supported_freebsd = config.target_os == "FreeBSD" and config.target_arch in [
+    "x86_64",
+    "i386",
+    "aarch64",
+]
+if not (supported_android or supported_linux or supported_darwin or supported_freebsd or supported_netbsd):
     config.unsupported = True
 
 # Don't support Thumb due to broken fast unwinder

@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 //
 // This file is a part of LeakSanitizer.
-// Implementation of common leak checking functionality. Linux/NetBSD-specific
+// Implementation of common leak checking functionality. Linux/NetBSD/FreeBSD-specific
 // code.
 //
 //===----------------------------------------------------------------------===//
@@ -15,8 +15,11 @@
 #include "sanitizer_common/sanitizer_platform.h"
 #include "lsan_common.h"
 
-#if CAN_SANITIZE_LEAKS && (SANITIZER_LINUX || SANITIZER_NETBSD)
+#if CAN_SANITIZE_LEAKS && (SANITIZER_LINUX || SANITIZER_NETBSD || SANITIZER_FREEBSD)
 #include <link.h>
+#if SANITIZER_FREEBSD
+#include <pthread_np.h>
+#endif
 
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_flags.h"
@@ -93,10 +96,19 @@ static int ProcessGlobalRegionsCallback(struct dl_phdr_info *info, size_t size,
   return 0;
 }
 
+#if SANITIZER_FREEBSD
+extern "C" int _dl_iterate_phdr_locked(
+    int (*)(struct dl_phdr_info *, size_t, void *), void *);
+#endif
+
 // Scans global variables for heap pointers.
 void ProcessGlobalRegions(Frontier *frontier) {
   if (!flags()->use_globals) return;
+#if SANITIZER_FREEBSD
+  _dl_iterate_phdr_locked(ProcessGlobalRegionsCallback, frontier);
+#else
   dl_iterate_phdr(ProcessGlobalRegionsCallback, frontier);
+#endif
 }
 
 LoadedModule *GetLinker() { return linker; }
@@ -134,7 +146,16 @@ static int LockStuffAndStopTheWorldCallback(struct dl_phdr_info *info,
 void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
                               CheckForLeaksParam *argument) {
   DoStopTheWorldParam param = {callback, argument};
+#if SANITIZER_FREEBSD
+  // FreeBSD is susceptible to the same deadlock, but we can't solve it the same
+  // way because the lock is *not* re-entrant in libthr.  Instead, we let the
+  // tracer task stop the world and then use an rtld-internal method to bypass
+  // the locking.  This is naturally risky, but the state covered by the lock
+  // for our purposes doesn't mutate enough to be a problem.
+  LockStuffAndStopTheWorldCallback(0, 0, &param);
+#else
   dl_iterate_phdr(LockStuffAndStopTheWorldCallback, &param);
+#endif
 }
 
 } // namespace __lsan
